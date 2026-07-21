@@ -4,6 +4,7 @@ import {
   useState
 } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
@@ -38,17 +39,22 @@ export default function LoginPage() {
         password
       });
 
+      toast.success("Login successful.");
+
       navigate("/dashboard", {
         replace: true
       });
     } catch (requestError) {
       if (axios.isAxiosError(requestError)) {
-        setError(
+        const message =
           requestError.response?.data?.message ??
-            "Login failed. Please check your credentials."
-        );
+          "Login failed. Please check your credentials.";
+
+        setError(message);
+        toast.error(message);
       } else {
         setError("An unexpected error occurred.");
+        toast.error("An unexpected error occurred.");
       }
     } finally {
       setIsSubmitting(false);

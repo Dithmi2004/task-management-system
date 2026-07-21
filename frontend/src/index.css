@@ -37,15 +37,14 @@ button {
   padding: 32px;
   border-radius: 16px;
   background: white;
-  box-shadow: 0 16px 40px
-    rgba(15, 23, 42, 0.12);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
 }
 
 .login-card h1 {
   margin: 0 0 8px;
 }
 
-.login-card > p {
+.login-card>p {
   margin: 0 0 24px;
   color: #64748b;
 }
@@ -371,6 +370,14 @@ button {
   border: 1px solid #fecaca;
   background: #fff1f2;
   color: #be123c;
+}
+
+.edit-button:disabled,
+.delete-button:disabled,
+.logout-button:disabled,
+.reset-filter-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .empty-state {

@@ -2,6 +2,7 @@ import type { Task } from "../types/task";
 
 interface TaskTableProps {
   tasks: Task[];
+  deletingTaskId: number | null;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 }
@@ -36,6 +37,7 @@ function formatDate(dateValue: string): string {
 
 export default function TaskTable({
   tasks,
+  deletingTaskId,
   onEdit,
   onDelete
 }: TaskTableProps) {
@@ -116,9 +118,12 @@ export default function TaskTable({
                   <button
                     type="button"
                     className="delete-button"
+                    disabled={deletingTaskId === task.id}
                     onClick={() => onDelete(task)}
                   >
-                    Delete
+                    {deletingTaskId === task.id
+                      ? "Deleting..."
+                      : "Delete"}
                   </button>
                 </div>
               </td>

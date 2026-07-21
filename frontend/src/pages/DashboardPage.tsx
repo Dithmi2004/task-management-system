@@ -4,6 +4,7 @@ import {
   useEffect,
   useState
 } from "react";
+import { toast } from "react-toastify";
 import SummaryCard from "../components/SummaryCard";
 import TaskFilters from "../components/TaskFilters";
 import TaskModal from "../components/TaskModal";
@@ -59,6 +60,9 @@ export default function DashboardPage() {
 
   const [selectedTask, setSelectedTask] =
     useState<Task | null>(null);
+
+  const [deletingTaskId, setDeletingTaskId] =
+    useState<number | null>(null);
 
   const [error, setError] = useState("");
 
@@ -116,7 +120,7 @@ export default function DashboardPage() {
 
   async function handleDelete(task: Task): Promise<void> {
     const confirmed = window.confirm(
-      `Delete "${task.title}"?`
+      `Are you sure you want to delete "${task.title}"?`
     );
 
     if (!confirmed) {
@@ -124,7 +128,11 @@ export default function DashboardPage() {
     }
 
     try {
+      setDeletingTaskId(task.id);
+
       await deleteTask(task.id);
+
+      toast.success("Task deleted successfully.");
 
       await Promise.all([
         loadTasks(),
@@ -132,13 +140,15 @@ export default function DashboardPage() {
       ]);
     } catch (requestError) {
       if (axios.isAxiosError(requestError)) {
-        setError(
+        toast.error(
           requestError.response?.data?.message ??
             "Unable to delete the task."
         );
       } else {
-        setError("An unexpected error occurred.");
+        toast.error("An unexpected error occurred.");
       }
+    } finally {
+      setDeletingTaskId(null);
     }
   }
 
@@ -157,13 +167,30 @@ export default function DashboardPage() {
     setSelectedTask(null);
   }
 
+  function handleLogout(): void {
+    const confirmed = window.confirm(
+      "Are you sure you want to log out?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    logout();
+    toast.success("Logged out successfully.");
+  }
+
   async function handleSaveTask(
     values: TaskFormValues
   ): Promise<void> {
     if (selectedTask) {
       await updateTask(selectedTask.id, values);
+
+      toast.success("Task updated successfully.");
     } else {
       await createTask(values);
+
+      toast.success("Task created successfully.");
     }
 
     handleCloseTaskModal();
@@ -193,7 +220,7 @@ export default function DashboardPage() {
         <button
           type="button"
           className="logout-button"
-          onClick={logout}
+          onClick={handleLogout}
         >
           Logout
         </button>
@@ -274,6 +301,7 @@ export default function DashboardPage() {
         ) : (
           <TaskTable
             tasks={tasks}
+            deletingTaskId={deletingTaskId}
             onEdit={handleEdit}
             onDelete={(task) => {
               void handleDelete(task);
