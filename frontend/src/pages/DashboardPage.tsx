@@ -2,6 +2,7 @@ import axios from "axios";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState
 } from "react";
 import { toast } from "react-toastify";
@@ -9,6 +10,7 @@ import SummaryCard from "../components/SummaryCard";
 import TaskFilters from "../components/TaskFilters";
 import TaskModal from "../components/TaskModal";
 import TaskTable from "../components/TaskTable";
+import ThemeToggle from "../components/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
 import {
   createTask,
@@ -39,6 +41,8 @@ const initialFilters: TaskQueryParams = {
   sort: "newest"
 };
 
+const tasksPerPage = 5;
+
 export default function DashboardPage() {
   const { user, logout } = useAuth();
 
@@ -48,6 +52,7 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filters, setFilters] =
     useState<TaskQueryParams>(initialFilters);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [isSummaryLoading, setIsSummaryLoading] =
     useState(true);
@@ -117,6 +122,28 @@ export default function DashboardPage() {
       window.clearTimeout(timeoutId);
     };
   }, [loadTasks]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(tasks.length / tasksPerPage)
+  );
+  const activePage = Math.min(currentPage, totalPages);
+
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (activePage - 1) * tasksPerPage;
+
+    return tasks.slice(
+      startIndex,
+      startIndex + tasksPerPage
+    );
+  }, [activePage, tasks]);
+
+  function handleFilterChange(
+    nextFilters: TaskQueryParams
+  ): void {
+    setFilters(nextFilters);
+    setCurrentPage(1);
+  }
 
   async function handleDelete(task: Task): Promise<void> {
     const confirmed = window.confirm(
@@ -217,13 +244,27 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="logout-button"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
+        <div className="dashboard-actions">
+          <ThemeToggle />
+
+          <button
+            type="button"
+            className="logout-button"
+            onClick={handleLogout}
+            aria-label="Log out"
+            title="Log out"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              focusable="false"
+            >
+              <path d="M10 17l5-5-5-5" />
+              <path d="M15 12H3" />
+              <path d="M21 3v18" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       {error && (
@@ -291,7 +332,7 @@ export default function DashboardPage() {
 
         <TaskFilters
           filters={filters}
-          onChange={setFilters}
+          onChange={handleFilterChange}
         />
 
         {isTasksLoading ? (
@@ -300,13 +341,74 @@ export default function DashboardPage() {
           </div>
         ) : (
           <TaskTable
-            tasks={tasks}
+            tasks={paginatedTasks}
             deletingTaskId={deletingTaskId}
             onEdit={handleEdit}
             onDelete={(task) => {
               void handleDelete(task);
             }}
           />
+        )}
+
+        {tasks.length > tasksPerPage && (
+          <div className="pagination-controls">
+            <p>
+              Page {activePage} of {totalPages}
+            </p>
+
+            <div>
+              <button
+                type="button"
+                className="pagination-button"
+                disabled={activePage === 1}
+                onClick={() =>
+                  setCurrentPage((page) =>
+                    Math.max(1, page - 1)
+                  )
+                }
+              >
+                Previous
+              </button>
+
+              {Array.from(
+                { length: totalPages },
+                (_, index) => index + 1
+              ).map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  className={
+                    pageNumber === activePage
+                      ? "pagination-button active"
+                      : "pagination-button"
+                  }
+                  aria-current={
+                    pageNumber === activePage
+                      ? "page"
+                      : undefined
+                  }
+                  onClick={() =>
+                    setCurrentPage(pageNumber)
+                  }
+                >
+                  {pageNumber}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className="pagination-button"
+                disabled={activePage === totalPages}
+                onClick={() =>
+                  setCurrentPage((page) =>
+                    Math.min(totalPages, page + 1)
+                  )
+                }
+              >
+                Next
+              </button>
+            </div>
+          </div>
         )}
       </section>
 
