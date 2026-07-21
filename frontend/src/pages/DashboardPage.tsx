@@ -1,40 +1,178 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState
+} from "react";
 import SummaryCard from "../components/SummaryCard";
+import TaskFilters from "../components/TaskFilters";
+import TaskModal from "../components/TaskModal";
+import TaskTable from "../components/TaskTable";
 import { useAuth } from "../context/AuthContext";
-import { getTaskSummary } from "../services/taskService";
-import type { TaskSummary } from "../types/task";
+import {
+  createTask,
+  deleteTask,
+  getTasks,
+  getTaskSummary,
+  updateTask
+} from "../services/taskService";
+import type {
+  Task,
+  TaskFormValues,
+  TaskQueryParams,
+  TaskSummary
+} from "../types/task";
+
+const emptySummary: TaskSummary = {
+  totalTasks: 0,
+  pendingTasks: 0,
+  inProgressTasks: 0,
+  completedTasks: 0,
+  overdueTasks: 0
+};
+
+const initialFilters: TaskQueryParams = {
+  search: "",
+  status: "",
+  priority: "",
+  sort: "newest"
+};
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
 
   const [summary, setSummary] =
-    useState<TaskSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+    useState<TaskSummary>(emptySummary);
+
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [filters, setFilters] =
+    useState<TaskQueryParams>(initialFilters);
+
+  const [isSummaryLoading, setIsSummaryLoading] =
+    useState(true);
+
+  const [isTasksLoading, setIsTasksLoading] =
+    useState(true);
+
+  const [isTaskModalOpen, setIsTaskModalOpen] =
+    useState(false);
+
+  const [selectedTask, setSelectedTask] =
+    useState<Task | null>(null);
+
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function loadSummary(): Promise<void> {
-      try {
-        setError("");
-        const data = await getTaskSummary();
-        setSummary(data);
-      } catch (requestError) {
-        if (axios.isAxiosError(requestError)) {
-          setError(
-            requestError.response?.data?.message ??
-              "Unable to load the dashboard summary."
-          );
-        } else {
-          setError("An unexpected error occurred.");
-        }
-      } finally {
-        setIsLoading(false);
+  const loadSummary = useCallback(async (): Promise<void> => {
+    try {
+      const data = await getTaskSummary();
+      setSummary(data);
+    } catch {
+      setError("Unable to load dashboard summary.");
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  }, []);
+
+  const loadTasks = useCallback(async (): Promise<void> => {
+    try {
+      setIsTasksLoading(true);
+      setError("");
+
+      const data = await getTasks(filters);
+      setTasks(data);
+    } catch (requestError) {
+      if (axios.isAxiosError(requestError)) {
+        setError(
+          requestError.response?.data?.message ??
+            "Unable to load tasks."
+        );
+      } else {
+        setError("An unexpected error occurred.");
       }
+    } finally {
+      setIsTasksLoading(false);
+    }
+  }, [filters]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadSummary();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [loadSummary]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadTasks();
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [loadTasks]);
+
+  async function handleDelete(task: Task): Promise<void> {
+    const confirmed = window.confirm(
+      `Delete "${task.title}"?`
+    );
+
+    if (!confirmed) {
+      return;
     }
 
-    void loadSummary();
-  }, []);
+    try {
+      await deleteTask(task.id);
+
+      await Promise.all([
+        loadTasks(),
+        loadSummary()
+      ]);
+    } catch (requestError) {
+      if (axios.isAxiosError(requestError)) {
+        setError(
+          requestError.response?.data?.message ??
+            "Unable to delete the task."
+        );
+      } else {
+        setError("An unexpected error occurred.");
+      }
+    }
+  }
+
+  function handleEdit(task: Task): void {
+    setSelectedTask(task);
+    setIsTaskModalOpen(true);
+  }
+
+  function handleAddTask(): void {
+    setSelectedTask(null);
+    setIsTaskModalOpen(true);
+  }
+
+  function handleCloseTaskModal(): void {
+    setIsTaskModalOpen(false);
+    setSelectedTask(null);
+  }
+
+  async function handleSaveTask(
+    values: TaskFormValues
+  ): Promise<void> {
+    if (selectedTask) {
+      await updateTask(selectedTask.id, values);
+    } else {
+      await createTask(values);
+    }
+
+    handleCloseTaskModal();
+
+    await Promise.all([
+      loadTasks(),
+      loadSummary()
+    ]);
+  }
 
   return (
     <main className="dashboard-page">
@@ -67,11 +205,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {isLoading ? (
-        <section className="dashboard-loading">
+      {isSummaryLoading ? (
+        <div className="dashboard-loading">
           Loading dashboard summary...
-        </section>
-      ) : summary ? (
+        </div>
+      ) : (
         <section className="summary-grid">
           <SummaryCard
             title="Total Tasks"
@@ -103,21 +241,53 @@ export default function DashboardPage() {
             description="Incomplete tasks past their due date"
           />
         </section>
-      ) : null}
+      )}
 
-      <section className="dashboard-content">
-        <div>
-          <h2>Recent Tasks</h2>
-          <p>
-            The task management table will be added in the
-            next step.
-          </p>
+      <section className="task-section">
+        <div className="task-section-header">
+          <div>
+            <h2>Tasks</h2>
+            <p>
+              Search, filter, sort, edit, and delete your
+              tasks.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="primary-button"
+            onClick={handleAddTask}
+          >
+            Add New Task
+          </button>
         </div>
 
-        <button type="button" className="primary-button">
-          Add New Task
-        </button>
+        <TaskFilters
+          filters={filters}
+          onChange={setFilters}
+        />
+
+        {isTasksLoading ? (
+          <div className="dashboard-loading">
+            Loading tasks...
+          </div>
+        ) : (
+          <TaskTable
+            tasks={tasks}
+            onEdit={handleEdit}
+            onDelete={(task) => {
+              void handleDelete(task);
+            }}
+          />
+        )}
       </section>
+
+      <TaskModal
+        isOpen={isTaskModalOpen}
+        task={selectedTask}
+        onClose={handleCloseTaskModal}
+        onSubmit={handleSaveTask}
+      />
     </main>
   );
 }
