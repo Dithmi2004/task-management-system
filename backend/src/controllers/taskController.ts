@@ -1,7 +1,20 @@
 import type { Request, Response } from "express";
 import { validationResult } from "express-validator";
-import {createTask, deleteTask, getTaskById, getTaskSummary,getTasksByUserId, updateTask} from "../services/taskService.js";
+import {
+    ALLOWED_TASK_PRIORITIES,
+    ALLOWED_TASK_SORT_VALUES,
+    ALLOWED_TASK_STATUSES,
+    type TaskSortValue
+} from "../constants/taskConstants.js";
 import type { TaskPriority, TaskStatus } from "../interfaces/task.interface.js";
+import {
+    createTask,
+    deleteTask,
+    getTaskById,
+    getTaskSummary,
+    getTasksByUserId,
+    updateTask
+} from "../services/taskService.js";
 
 interface TaskRequestBody {
     title: string;
@@ -98,27 +111,9 @@ export async function getTasksController(
             ? req.query.sort
             : undefined;
 
-    const allowedStatuses: TaskStatus[] = [
-        "PENDING",
-        "IN_PROGRESS",
-        "COMPLETED"
-    ];
-
-    const allowedPriorities: TaskPriority[] = [
-        "LOW",
-        "MEDIUM",
-        "HIGH"
-    ];
-
-    const allowedSortValues = [
-        "newest",
-        "oldest",
-        "dueDate"
-    ] as const;
-
     if (
         status &&
-        !allowedStatuses.includes(status as TaskStatus)
+        !ALLOWED_TASK_STATUSES.includes(status as TaskStatus)
     ) {
         res.status(400).json({
             success: false,
@@ -131,7 +126,7 @@ export async function getTasksController(
 
     if (
         priority &&
-        !allowedPriorities.includes(priority as TaskPriority)
+        !ALLOWED_TASK_PRIORITIES.includes(priority as TaskPriority)
     ) {
         res.status(400).json({
             success: false,
@@ -143,9 +138,7 @@ export async function getTasksController(
 
     if (
         sort &&
-        !allowedSortValues.includes(
-            sort as (typeof allowedSortValues)[number]
-        )
+        !ALLOWED_TASK_SORT_VALUES.includes(sort as TaskSortValue)
     ) {
         res.status(400).json({
             success: false,
@@ -160,11 +153,7 @@ export async function getTasksController(
         search: search || undefined,
         status: status as TaskStatus | undefined,
         priority: priority as TaskPriority | undefined,
-        sort: sort as
-            | "newest"
-            | "oldest"
-            | "dueDate"
-            | undefined
+        sort: sort as TaskSortValue | undefined
     });
 
     res.status(200).json({

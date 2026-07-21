@@ -9,6 +9,12 @@ import type {
   Task,
   TaskFormValues
 } from "../types/task";
+import {
+  taskPriorityOptions,
+  taskStatusOptions
+} from "../constants/taskOptions";
+import { taskMessages } from "../constants/messages";
+import { getTodayDate } from "../utils/dateUtils";
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -25,21 +31,12 @@ interface FormErrors {
   general?: string;
 }
 
-function getToday(): string {
-  const today = new Date();
-  const timezoneOffset = today.getTimezoneOffset() * 60_000;
-
-  return new Date(today.getTime() - timezoneOffset)
-    .toISOString()
-    .split("T")[0];
-}
-
 const emptyForm: TaskFormValues = {
   title: "",
   description: "",
   priority: "MEDIUM",
   status: "PENDING",
-  dueDate: getToday()
+  dueDate: getTodayDate()
 };
 
 export default function TaskModal({
@@ -71,7 +68,7 @@ export default function TaskModal({
       } else {
         setFormValues({
           ...emptyForm,
-          dueDate: getToday()
+          dueDate: getTodayDate()
         });
       }
 
@@ -110,7 +107,7 @@ export default function TaskModal({
 
   function validateForm(): boolean {
     const nextErrors: FormErrors = {};
-    const today = getToday();
+    const today = getTodayDate();
 
     if (!formValues.title.trim()) {
       nextErrors.title = "Title is required.";
@@ -184,19 +181,19 @@ export default function TaskModal({
             setErrors({
               general:
                 requestError.response?.data?.message ??
-                "Unable to save the task."
+                taskMessages.saveFailed
             });
           }
         } else {
           setErrors({
             general:
               requestError.response?.data?.message ??
-              "Unable to save the task."
+              taskMessages.saveFailed
           });
         }
       } else {
         setErrors({
-          general: "An unexpected error occurred."
+          general: taskMessages.unexpectedError
         });
       }
     } finally {
@@ -297,9 +294,14 @@ export default function TaskModal({
                 value={formValues.priority}
                 onChange={handleChange}
               >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
+                {taskPriorityOptions.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </option>
+                ))}
               </select>
 
               {errors.priority && (
@@ -320,13 +322,14 @@ export default function TaskModal({
                 value={formValues.status}
                 onChange={handleChange}
               >
-                <option value="PENDING">Pending</option>
-                <option value="IN_PROGRESS">
-                  In Progress
-                </option>
-                <option value="COMPLETED">
-                  Completed
-                </option>
+                {taskStatusOptions.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </option>
+                ))}
               </select>
 
               {errors.status && (
@@ -346,7 +349,7 @@ export default function TaskModal({
               id="task-due-date"
               name="dueDate"
               type="date"
-              min={getToday()}
+              min={getTodayDate()}
               value={formValues.dueDate}
               onChange={handleChange}
             />

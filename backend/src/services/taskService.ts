@@ -1,8 +1,13 @@
 import type { ResultSetHeader } from "mysql2";
 import { pool } from "../config/db.js";
-import type {CreateTaskInput,TaskQueryOptions, TaskRow,TaskStatus,TaskSummaryRow,UpdateTaskInput} from "../interfaces/task.interface.js";
-
-const DEFAULT_TASK_STATUS: TaskStatus = "PENDING";
+import { DEFAULT_TASK_STATUS } from "../constants/taskConstants.js";
+import type {
+  CreateTaskInput,
+  TaskQueryOptions,
+  TaskRow,
+  TaskSummaryRow,
+  UpdateTaskInput
+} from "../interfaces/task.interface.js";
 
 export async function createTask(
     input: CreateTaskInput,

@@ -263,25 +263,6 @@ button {
   line-height: 1.5;
 }
 
-.dashboard-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 24px;
-  border-radius: 8px;
-  background: white;
-}
-
-.dashboard-content h2 {
-  margin: 0 0 8px;
-}
-
-.dashboard-content p {
-  margin: 0;
-  color: #64748b;
-}
-
 .dashboard-loading,
 .dashboard-error {
   padding: 16px;
@@ -760,10 +741,6 @@ html[data-theme="dark"] .delete-button {
 
   .dashboard-header {
     align-items: flex-start;
-  }
-
-  .dashboard-content {
-    flex-direction: column;
   }
 
   .summary-grid {

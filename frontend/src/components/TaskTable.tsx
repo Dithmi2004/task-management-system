@@ -1,4 +1,5 @@
 import type { Task } from "../types/task";
+import { formatDisplayDate } from "../utils/dateUtils";
 
 interface TaskTableProps {
   tasks: Task[];
@@ -16,23 +17,6 @@ function formatStatus(status: Task["status"]): string {
         word.charAt(0).toUpperCase() + word.slice(1)
     )
     .join(" ");
-}
-
-function formatDate(dateValue: string): string {
-  const dateOnly = dateValue.includes("T")
-    ? dateValue.split("T")[0]
-    : dateValue;
-  const date = new Date(`${dateOnly}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) {
-    return dateOnly;
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit"
-  }).format(date);
 }
 
 export default function TaskTable({
@@ -95,14 +79,10 @@ export default function TaskTable({
                 </span>
               </td>
 
-              <td>{formatDate(task.due_date)}</td>
+              <td>{formatDisplayDate(task.due_date)}</td>
 
               <td>
-                {new Intl.DateTimeFormat("en-GB", {
-                  year: "numeric",
-                  month: "short",
-                  day: "2-digit"
-                }).format(new Date(task.updated_at))}
+                {formatDisplayDate(task.updated_at)}
               </td>
 
               <td>

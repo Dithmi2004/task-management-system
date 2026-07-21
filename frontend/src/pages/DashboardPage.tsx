@@ -1,4 +1,3 @@
-import axios from "axios";
 import {
   useCallback,
   useEffect,
@@ -6,11 +5,21 @@ import {
   useState
 } from "react";
 import { toast } from "react-toastify";
-import SummaryCard from "../components/SummaryCard";
+import DashboardHeader from "../components/DashboardHeader";
+import PaginationControls from "../components/PaginationControls";
 import TaskFilters from "../components/TaskFilters";
 import TaskModal from "../components/TaskModal";
+import TaskSummaryGrid from "../components/TaskSummaryGrid";
 import TaskTable from "../components/TaskTable";
-import ThemeToggle from "../components/ThemeToggle";
+import {
+  authMessages,
+  taskMessages
+} from "../constants/messages";
+import {
+  emptyTaskSummary,
+  initialTaskFilters,
+  TASKS_PER_PAGE
+} from "../constants/taskOptions";
 import { useAuth } from "../context/AuthContext";
 import {
   createTask,
@@ -25,33 +34,21 @@ import type {
   TaskQueryParams,
   TaskSummary
 } from "../types/task";
-
-const emptySummary: TaskSummary = {
-  totalTasks: 0,
-  pendingTasks: 0,
-  inProgressTasks: 0,
-  completedTasks: 0,
-  overdueTasks: 0
-};
-
-const initialFilters: TaskQueryParams = {
-  search: "",
-  status: "",
-  priority: "",
-  sort: "newest"
-};
-
-const tasksPerPage = 5;
+import { getRequestErrorMessage } from "../utils/errorUtils";
+import {
+  getPaginatedItems,
+  getTotalPages
+} from "../utils/paginationUtils";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
 
   const [summary, setSummary] =
-    useState<TaskSummary>(emptySummary);
+    useState<TaskSummary>(emptyTaskSummary);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filters, setFilters] =
-    useState<TaskQueryParams>(initialFilters);
+    useState<TaskQueryParams>(initialTaskFilters);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [isSummaryLoading, setIsSummaryLoading] =
@@ -76,7 +73,7 @@ export default function DashboardPage() {
       const data = await getTaskSummary();
       setSummary(data);
     } catch {
-      setError("Unable to load dashboard summary.");
+      setError(taskMessages.loadSummaryFailed);
     } finally {
       setIsSummaryLoading(false);
     }
@@ -90,14 +87,12 @@ export default function DashboardPage() {
       const data = await getTasks(filters);
       setTasks(data);
     } catch (requestError) {
-      if (axios.isAxiosError(requestError)) {
-        setError(
-          requestError.response?.data?.message ??
-            "Unable to load tasks."
-        );
-      } else {
-        setError("An unexpected error occurred.");
-      }
+      setError(
+        getRequestErrorMessage(
+          requestError,
+          taskMessages.loadTasksFailed
+        )
+      );
     } finally {
       setIsTasksLoading(false);
     }
@@ -123,18 +118,17 @@ export default function DashboardPage() {
     };
   }, [loadTasks]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(tasks.length / tasksPerPage)
+  const totalPages = getTotalPages(
+    tasks.length,
+    TASKS_PER_PAGE
   );
   const activePage = Math.min(currentPage, totalPages);
 
   const paginatedTasks = useMemo(() => {
-    const startIndex = (activePage - 1) * tasksPerPage;
-
-    return tasks.slice(
-      startIndex,
-      startIndex + tasksPerPage
+    return getPaginatedItems(
+      tasks,
+      activePage,
+      TASKS_PER_PAGE
     );
   }, [activePage, tasks]);
 
@@ -159,21 +153,19 @@ export default function DashboardPage() {
 
       await deleteTask(task.id);
 
-      toast.success("Task deleted successfully.");
+      toast.success(taskMessages.deleteSuccess);
 
       await Promise.all([
         loadTasks(),
         loadSummary()
       ]);
     } catch (requestError) {
-      if (axios.isAxiosError(requestError)) {
-        toast.error(
-          requestError.response?.data?.message ??
-            "Unable to delete the task."
-        );
-      } else {
-        toast.error("An unexpected error occurred.");
-      }
+      toast.error(
+        getRequestErrorMessage(
+          requestError,
+          taskMessages.deleteFailed
+        )
+      );
     } finally {
       setDeletingTaskId(null);
     }
@@ -196,7 +188,7 @@ export default function DashboardPage() {
 
   function handleLogout(): void {
     const confirmed = window.confirm(
-      "Are you sure you want to log out?"
+      authMessages.logoutConfirm
     );
 
     if (!confirmed) {
@@ -204,7 +196,7 @@ export default function DashboardPage() {
     }
 
     logout();
-    toast.success("Logged out successfully.");
+    toast.success(authMessages.logoutSuccess);
   }
 
   async function handleSaveTask(
@@ -213,11 +205,11 @@ export default function DashboardPage() {
     if (selectedTask) {
       await updateTask(selectedTask.id, values);
 
-      toast.success("Task updated successfully.");
+      toast.success(taskMessages.updateSuccess);
     } else {
       await createTask(values);
 
-      toast.success("Task created successfully.");
+      toast.success(taskMessages.createSuccess);
     }
 
     handleCloseTaskModal();
@@ -230,42 +222,10 @@ export default function DashboardPage() {
 
   return (
     <main className="dashboard-page">
-      <header className="dashboard-header">
-        <div>
-          <p className="dashboard-eyebrow">
-            Task Management System
-          </p>
-
-          <h1>Dashboard</h1>
-
-          <p>
-            Welcome back,{" "}
-            <strong>{user?.name ?? "User"}</strong>.
-          </p>
-        </div>
-
-        <div className="dashboard-actions">
-          <ThemeToggle />
-
-          <button
-            type="button"
-            className="logout-button"
-            onClick={handleLogout}
-            aria-label="Log out"
-            title="Log out"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              focusable="false"
-            >
-              <path d="M10 17l5-5-5-5" />
-              <path d="M15 12H3" />
-              <path d="M21 3v18" />
-            </svg>
-          </button>
-        </div>
-      </header>
+      <DashboardHeader
+        userName={user?.name ?? "User"}
+        onLogout={handleLogout}
+      />
 
       {error && (
         <div className="dashboard-error" role="alert">
@@ -278,37 +238,7 @@ export default function DashboardPage() {
           Loading dashboard summary...
         </div>
       ) : (
-        <section className="summary-grid">
-          <SummaryCard
-            title="Total Tasks"
-            value={summary.totalTasks}
-            description="All tasks in your account"
-          />
-
-          <SummaryCard
-            title="Pending"
-            value={summary.pendingTasks}
-            description="Tasks waiting to be started"
-          />
-
-          <SummaryCard
-            title="In Progress"
-            value={summary.inProgressTasks}
-            description="Tasks currently being worked on"
-          />
-
-          <SummaryCard
-            title="Completed"
-            value={summary.completedTasks}
-            description="Tasks completed successfully"
-          />
-
-          <SummaryCard
-            title="Overdue"
-            value={summary.overdueTasks}
-            description="Incomplete tasks past their due date"
-          />
-        </section>
+        <TaskSummaryGrid summary={summary} />
       )}
 
       <section className="task-section">
@@ -350,66 +280,11 @@ export default function DashboardPage() {
           />
         )}
 
-        {tasks.length > tasksPerPage && (
-          <div className="pagination-controls">
-            <p>
-              Page {activePage} of {totalPages}
-            </p>
-
-            <div>
-              <button
-                type="button"
-                className="pagination-button"
-                disabled={activePage === 1}
-                onClick={() =>
-                  setCurrentPage((page) =>
-                    Math.max(1, page - 1)
-                  )
-                }
-              >
-                Previous
-              </button>
-
-              {Array.from(
-                { length: totalPages },
-                (_, index) => index + 1
-              ).map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  type="button"
-                  className={
-                    pageNumber === activePage
-                      ? "pagination-button active"
-                      : "pagination-button"
-                  }
-                  aria-current={
-                    pageNumber === activePage
-                      ? "page"
-                      : undefined
-                  }
-                  onClick={() =>
-                    setCurrentPage(pageNumber)
-                  }
-                >
-                  {pageNumber}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                className="pagination-button"
-                disabled={activePage === totalPages}
-                onClick={() =>
-                  setCurrentPage((page) =>
-                    Math.min(totalPages, page + 1)
-                  )
-                }
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <PaginationControls
+          currentPage={activePage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </section>
 
       <TaskModal

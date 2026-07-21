@@ -8,12 +8,7 @@ import type {
   TaskSummary,
   TaskSummaryResponse
 } from "../types/task";
-
-function getDateOnly(dateValue: string): string {
-  return dateValue.includes("T")
-    ? dateValue.split("T")[0]
-    : dateValue;
-}
+import { getDateOnly } from "../utils/dateUtils";
 
 function normalizeTask(task: Task): Task {
   return {

@@ -3,6 +3,12 @@ import type {
   TaskQueryParams,
   TaskStatus
 } from "../types/task";
+import {
+  initialTaskFilters,
+  taskPriorityOptions,
+  taskSortOptions,
+  taskStatusOptions
+} from "../constants/taskOptions";
 
 interface TaskFiltersProps {
   filters: TaskQueryParams;
@@ -53,9 +59,14 @@ export default function TaskFilters({
           }
         >
           <option value="">All statuses</option>
-          <option value="PENDING">Pending</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="COMPLETED">Completed</option>
+          {taskStatusOptions.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+            >
+              {option.label}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -73,9 +84,14 @@ export default function TaskFilters({
           }
         >
           <option value="">All priorities</option>
-          <option value="LOW">Low</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="HIGH">High</option>
+          {taskPriorityOptions.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+            >
+              {option.label}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -89,23 +105,21 @@ export default function TaskFilters({
             updateFilter("sort", event.target.value)
           }
         >
-          <option value="newest">Newest Created</option>
-          <option value="oldest">Oldest Created</option>
-          <option value="dueDate">Due Date</option>
+          {taskSortOptions.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+            >
+              {option.label}
+            </option>
+          ))}
         </select>
       </div>
 
       <button
         type="button"
         className="reset-filter-button"
-        onClick={() =>
-          onChange({
-            search: "",
-            status: "",
-            priority: "",
-            sort: "newest"
-          })
-        }
+        onClick={() => onChange(initialTaskFilters)}
       >
         Reset
       </button>
